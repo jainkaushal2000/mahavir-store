@@ -22,6 +22,14 @@
 html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:border-box}
 [hidden]{display:none!important}
+
+/* Skeleton Loading Animation */
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+.skel { animation: pulse 1.5s infinite ease-in-out; border-color:transparent !important; box-shadow:none !important; }
+.skel-img { background: var(--tile); width: 100%; height: 100%; position: absolute; inset: 0; }
+.skel-text { background: var(--tile); border-radius: 4px; height: 16px; margin-bottom: 8px; width: 80%; }
+.skel-btn { background: var(--tile); border-radius: 4px; height: 44px; width: 100%; margin-top: auto; }
+
 .top{position:fixed;right:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);box-shadow:var(--shadow-hover);cursor:pointer;font-size:18px;opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s;z-index:8}
 .top.on{opacity:1;visibility:visible}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
@@ -65,14 +73,19 @@ select.err{border-color:#c0392b}
 .hint{color:#c0392b;font-size:13px;margin:-8px 0 0;min-height:0}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .scrim{position:fixed;inset:0;background:rgba(10,15,25,.45);opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s;z-index:20}
-.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,100%);background:var(--surface);border-left:1px solid var(--line);box-shadow:var(--shadow-hover);z-index:21;display:flex;flex-direction:column;transform:translateX(100%);visibility:hidden;transition:transform .28s ease,visibility .28s;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+
+/* UPGRADED DRAWER: 90vw max on mobile */
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(440px,90vw);background:var(--surface);border-left:1px solid var(--line);box-shadow:var(--shadow-hover);z-index:21;display:flex;flex-direction:column;transform:translateX(100%);visibility:hidden;transition:transform .28s ease,visibility .28s;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 body.cart-open .scrim{opacity:1;visibility:visible}
 body.cart-open .drawer{transform:none;visibility:visible}
 body.cart-open{overflow:hidden}
 .dh{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line)}
 .dh h2{font-family:var(--serif);font-weight:500;font-size:24px;margin:0}
-.x{background:none;border:0;font-size:28px;line-height:1;color:var(--muted);cursor:pointer;padding:2px 8px}
-.x:hover{color:var(--ink)}
+
+/* UPGRADED CLOSE BUTTON */
+.x{background:#fce8e8;border:0;font-size:34px;line-height:1;color:#c0392b;cursor:pointer;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;transition:transform .15s ease, background .15s ease}
+.x:hover{transform:scale(1.05);background:#fadbd8}
+
 .items{flex:1;overflow-y:auto;padding:4px 22px}
 .empty{color:var(--muted);padding:48px 0;text-align:center;margin:0}
 .it{display:grid;grid-template-columns:72px 1fr;gap:14px;padding:16px 0;border-bottom:1px solid var(--line)}
@@ -121,7 +134,7 @@ textarea.err,.fld.err{border-color:#c0392b}
   <div class="bar">
     <div class="brand">Mahavir Store Lumding</div>
     <nav aria-label="Categories" id="nav">
-      <!-- Buttons will be auto-generated based on Google Sheets Tabs -->
+      <!-- Buttons will be auto-generated -->
     </nav>
     <button class="cart" id="openCart" type="button" aria-label="Open cart">Cart<b id="cartCount" aria-live="polite">0</b></button>
   </div>
@@ -154,15 +167,28 @@ textarea.err,.fld.err{border-color:#c0392b}
 // =========================================================================
 // CONFIGURATION - UPDATE THESE TWO VARIABLES
 // =========================================================================
-const API_URL = "https://script.google.com/macros/s/AKfycbwMBAhGRT1Ck5-EJ5LR0sD8UoyKoUDqyEsm1s3SvUPv3SUn7EmjvDu49o2A01oX7ruk/exec"; 
-const WA_NUMBER = "917002082527"; // Replace with your number (e.g., "919876543210")
+const API_URL = "https://script.google.com/macros/s/AKfycbxMH8g3eMeQPmWLgXH_FcNCZ8E_rbl4dX5t0ZKe_A8Io24FDKwqj0gjrBKOApCNVY41/exec"; 
+const WA_NUMBER = "917002082527"; 
 // =========================================================================
 
 const SIZES = ['S','M','L','XL','XXL','XXXL'];
 let P = []; 
 let cart = [];
 
-// Fallback data so the website works perfectly even if the API URL is empty or fails
+function safeGetStore(key) {
+    try { return localStorage.getItem(key); } catch(e) { return null; }
+}
+function safeSetStore(key, value) {
+    try { localStorage.setItem(key, value); } catch(e) {}
+}
+
+try {
+    const savedCart = safeGetStore('mahavir_cart');
+    if (savedCart) cart = JSON.parse(savedCart) || [];
+} catch(e) {
+    cart = [];
+}
+
 const fallbackData = [
   {n:'Essential Crew Neck Tee',c:'T-Shirts',f:'Heavyweight cotton, regular fit',mrp:1299,p:799,col:'#9fb2c8',tag:'Bestseller', k:'tee', imgUrl:''},
   {n:'Cotton Brief Pack of 3',c:'Undergarments for Men',f:'Soft combed cotton',mrp:349,p:249,col:'#7f8fa6', k:'trunk', imgUrl:''},
@@ -171,7 +197,6 @@ const fallbackData = [
   {n:'Waterproof Trench Coat',c:'Raincoat',f:'Waterproof, taped seams',mrp:1499,p:1099,col:'#e0b84a', k:'coat', imgUrl:''}
 ];
 
-// SVG Artwork Fallbacks for empty Image URLs
 const tee=c=>`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240"><path d="M70 30 40 45 10 85l28 20 17-17v127h90V88l17 17 28-20-30-40-30-15q-30 22-60 0z" fill="${c}"/><path d="M70 30q30 22 60 0" fill="none" stroke="rgba(0,0,0,.18)" stroke-width="3"/></svg>`;
 const svg=b=>`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240">${b}</svg>`;
 const ART={
@@ -186,8 +211,8 @@ const inr=n=>'₹'+n.toLocaleString('en-IN');
 const grid=document.getElementById('grid');
 const $=id=>document.getElementById(id);
 
-// Maps category name to the specific SVG artwork type
 function getArtKey(category) {
+  if (!category) return 'tee';
   if (category.includes('T-Shirts')) return 'tee';
   if (category.includes('Men')) return 'trunk';
   if (category.includes('Women')) return 'bra';
@@ -196,15 +221,51 @@ function getArtKey(category) {
   return 'tee'; 
 }
 
-const thumb = i => i.imgUrl ? i.imgUrl : uri(ART[i.k || getArtKey(i.c)](i.col || '#9fb2c8'));
+const thumb = i => {
+    if (i.imgUrl && i.imgUrl.trim() !== '') return i.imgUrl;
+    const key = i.k || getArtKey(i.c);
+    const color = i.col || '#9fb2c8';
+    const artFunc = ART[key] || ART['tee'];
+    return uri(artFunc(color));
+};
 
-function openCart(){document.body.classList.add('cart-open');$('closeCart').focus()}
-function closeCart(){document.body.classList.remove('cart-open');$('openCart').focus()}
-function addToCart(x,size){const f=cart.find(i=>i.n===x.n&&i.size===size);f?f.q++:cart.push({...x,size,q:1});renderCart();openCart()}
+function openCart(){
+  if(!document.body.classList.contains('cart-open')){
+    document.body.classList.add('cart-open');
+    history.pushState({cartOpen: true}, '');
+  }
+  $('closeCart').focus();
+}
+
+function closeCart(fromPopState = false){
+  if(document.body.classList.contains('cart-open')){
+    document.body.classList.remove('cart-open');
+    if(!fromPopState && history.state && history.state.cartOpen) {
+      history.back();
+    }
+  }
+  $('openCart').focus();
+}
+
+window.addEventListener('popstate', (e) => {
+  if (document.body.classList.contains('cart-open')) {
+    closeCart(true); 
+  }
+});
+
+function saveCart() { safeSetStore('mahavir_cart', JSON.stringify(cart)); }
+
+function addToCart(x,size){
+    const f=cart.find(i=>i.n===x.n&&i.size===size);
+    f ? f.q++ : cart.push({...x,size,q:1});
+    renderCart();
+    openCart();
+}
 
 const total=()=>cart.reduce((a,i)=>a+i.p*i.q,0) + (cart.length > 0 ? 50 : 0);
 
 function renderCart(){
+  saveCart(); 
   $('items').innerHTML=cart.length?cart.map((i,k)=>`<div class="it"><div class="th"><img alt="" src="${thumb(i)}" style="${i.imgUrl ? 'width:100%;height:100%;object-fit:cover;' : ''}"></div><div><h3>${i.n}</h3><p class="meta">Size ${i.size}</p><div class="row"><span class="qty"><button type="button" data-k="${k}" data-a="dec" aria-label="Decrease quantity">−</button><span>${i.q}</span><button type="button" data-k="${k}" data-a="inc" aria-label="Increase quantity">+</button></span><button class="rm" type="button" data-k="${k}" data-a="rm">Remove</button><span class="lp">${inr(i.p*i.q)}</span></div></div></div>`).join(''):'<p class="empty">Your cart is empty. Choose a size and add a product to get started.</p>';
   
   let deliveryFee = cart.length > 0 ? 50 : 0;
@@ -213,8 +274,7 @@ function renderCart(){
     <div style="font-size: 24px; font-weight: 600; color: var(--ink);">${inr(total())}</div>
   `;
   
-  $('cartCount').textContent=cart.reduce((a,i)=>a+i.q,0);
-  $('wa').disabled=!cart.length;
+  $('cartCount').textContent=cart.reduce((a,i)=>a+i.q,0);$('wa').disabled=!cart.length;
 }
 
 $('items').addEventListener('click',e=>{
@@ -223,12 +283,39 @@ $('items').addEventListener('click',e=>{
   if(a==='inc')i.q++;else if(a==='dec'){if(--i.q<1)cart.splice(+b.dataset.k,1)}else cart.splice(+b.dataset.k,1);
   renderCart();
 });
-$('openCart').addEventListener('click',openCart);
-$('closeCart').addEventListener('click',closeCart);
-$('scrim').addEventListener('click',closeCart);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('cart-open'))closeCart()});
 
-['cName','cPhone','addr'].forEach(id=>$(id).addEventListener('input',()=>{$(id).classList.remove('err');$(id+'Hint').hidden=true}));
+$('openCart').addEventListener('click',openCart);
+$('closeCart').addEventListener('click', () => closeCart(false));
+$('scrim').addEventListener('click', () => closeCart(false));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('cart-open'))closeCart(false)});
+
+function saveCustomerDetails() {
+    safeSetStore('mahavir_user', JSON.stringify({
+        name: $('cName').value,
+        phone: $('cPhone').value,
+        addr: $('addr').value
+    }));
+}
+
+try {
+    const savedUser = JSON.parse(safeGetStore('mahavir_user'));
+    if (savedUser) {
+        if (savedUser.name) $('cName').value = savedUser.name;
+        if (savedUser.phone) $('cPhone').value = savedUser.phone;
+        if (savedUser.addr) $('addr').value = savedUser.addr;
+    }
+} catch(e) {}
+
+['cName','cPhone','addr'].forEach(id=>{
+    const el = $(id);
+    if(el) {
+        el.addEventListener('input',()=>{
+            el.classList.remove('err');
+            $(id+'Hint').hidden=true;
+            saveCustomerDetails();
+        });
+    }
+});
 
 $('wa').addEventListener('click',()=>{
   const addr=$('addr').value.trim();
@@ -249,34 +336,44 @@ $('wa').addEventListener('click',()=>{
   document.body.appendChild(a);a.click();a.remove();
 });
 
-// Database Fetch Logic
-async function loadProducts() {
-  if (API_URL === "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE" || API_URL.trim() === "") {
-     P = fallbackData;
-     renderGrid();
-     return;
-  }
-  
-  try {
-    const response = await fetch(API_URL);
-    const data = await response.json();
-    
+function renderSkeletons() {
+  grid.innerHTML = Array(8).fill(`
+    <article class="card skel">
+      <div class="img"><div class="skel-img"></div></div>
+      <div class="body">
+        <div><div class="skel-text" style="height:20px; width:70%;"></div><div class="skel-text" style="width:40%;"></div></div>
+        <div class="skel-text" style="height:24px; width:30%; margin:8px 0;"></div>
+        <div class="skel-btn" style="height:42px; margin-bottom:14px;"></div>
+        <div class="skel-btn"></div>
+      </div>
+    </article>`).join('');
+  $('heading').textContent = "Loading products...";
+  $('count').textContent = "";
+}
+
+function getProp(obj, key) {
+    const found = Object.keys(obj).find(k => k.trim().toLowerCase() === key.toLowerCase());
+    return found ? obj[found] : undefined;
+}
+
+// CALLBACK FUNCTION FOR JSONP
+window.processData = function(data) {
     let fetchedProducts = [];
     
-    // Automatically read whatever sheet tabs you created
     for (const category in data) {
        if (Array.isArray(data[category])) {
            data[category].forEach(item => {
-               if (item['Product Name']) { // Ensure row is not blank
+               const productName = getProp(item, 'Product Name');
+               if (productName) { 
                    fetchedProducts.push({
-                       n: item['Product Name'],
-                       c: category, // Uses the Google Sheet tab name automatically
-                       f: item['Fit'] || '',
-                       mrp: Number(item['MRP']) || 0,
-                       p: Number(item['Selling Price']) || 0,
-                       imgUrl: item['Image URL'] || '',
-                       tag: item['Tag'] || '',
-                       col: item['Color'] || '#9fb2c8', // Fallback color for SVG
+                       n: productName,
+                       c: category, 
+                       f: getProp(item, 'Fit') || '',
+                       mrp: Number(getProp(item, 'MRP')) || 0,
+                       p: Number(getProp(item, 'Selling Price')) || 0,
+                       imgUrl: getProp(item, 'Image URL') || '',
+                       tag: getProp(item, 'Tag') || '',
+                       col: getProp(item, 'Color') || '#9fb2c8', 
                        k: getArtKey(category)
                    });
                }
@@ -284,30 +381,48 @@ async function loadProducts() {
        }
     }
     
-    P = fetchedProducts.length > 0 ? fetchedProducts : fallbackData;
-    renderGrid(); 
-    
-  } catch (error) {
-    console.error("Error loading products:", error);
-    // If the API is blocked (e.g. CORS) or fails, gracefully load the fallback design
-    $('grid').innerHTML = "<p style='padding:24px; color:var(--muted);'>Connecting to inventory...</p>";
-    setTimeout(() => {
-        P = fallbackData;
-        renderGrid();
-    }, 1000);
-  }
+    if (fetchedProducts.length > 0) {
+        P = fetchedProducts;
+        safeSetStore('mahavir_products', JSON.stringify(P)); 
+        renderGrid(); 
+    }
 }
 
-// Generate the Navigation Category Buttons Dynamically
+function loadProducts() {
+  if (!API_URL || API_URL.trim() === "" || API_URL.includes("YOUR_GOOGLE_APPS_SCRIPT")) {
+     P = fallbackData;
+     renderGrid();
+     return;
+  }
+  
+  const cachedData = safeGetStore('mahavir_products');
+  if (cachedData) {
+      try {
+          P = JSON.parse(cachedData);
+          renderGrid(); 
+      } catch(e) { renderSkeletons(); }
+  } else {
+      renderSkeletons();
+  }
+
+  // JSONP INJECTION (Bypasses CORS restrictions)
+  const script = document.createElement('script');
+  script.src = API_URL + "?callback=processData";
+  script.onerror = function() {
+      console.error("Error loading fresh products via JSONP");
+      if (!cachedData) {
+          $('grid').innerHTML = "<p style='padding:24px; color:var(--muted);'>Connecting to inventory...</p>";
+          setTimeout(() => { P = fallbackData; renderGrid(); }, 1000);
+      }
+  };
+  document.body.appendChild(script);
+}
+
 function renderCategories() {
   const nav = $('nav');
-  // Define custom category order
   const customOrder = ['T-Shirts', 'Undergarments for Men', 'Undergarments for Women', 'Leggings', 'Raincoat'];
-  
-  // Get categories from data
   const dataCategories = [...new Set(P.map(item => item.c))];
   
-  // Sort data categories based on custom order, append any new ones at the end
   const sortedCategories = dataCategories.sort((a, b) => {
     let indexA = customOrder.indexOf(a);
     let indexB = customOrder.indexOf(b);
@@ -337,7 +452,6 @@ function renderGrid() {
     const el=document.createElement('article');
     el.className='card';el.dataset.cat=x.c;
     
-    // Use the fetched image URL, fallback to dynamic SVGs if empty
     const imageHTML = x.imgUrl 
         ? `<img alt="${x.n}" src="${x.imgUrl}" style="width:100%;height:100%;object-fit:cover;">`
         : `<img alt="${x.n} placeholder" src="${thumb(x)}">`;
@@ -364,9 +478,14 @@ function renderGrid() {
 
 function show(cat){
   let n=0;
-  grid.querySelectorAll('.card').forEach(c=>{const v=cat==='All Products'||c.dataset.cat===cat;c.hidden=!v;if(v)n++});
+  grid.querySelectorAll('.card').forEach(c=>{
+    if(c.classList.contains('skel')) return; 
+    const v=cat==='All Products'||c.dataset.cat===cat;
+    c.hidden=!v;
+    if(v)n++
+  });
   document.getElementById('heading').textContent=cat;
-  document.getElementById('count').textContent=n+(n===1?' item':' items');
+  if(P.length > 0) document.getElementById('count').textContent=n+(n===1?' item':' items');
   document.querySelectorAll('#nav button').forEach(b=>b.setAttribute('aria-current',b.dataset.cat===cat));
 }
 
@@ -383,9 +502,8 @@ const topBtn=$('top');
 addEventListener('scroll',()=>topBtn.classList.toggle('on',scrollY>600),{passive:true});
 topBtn.addEventListener('click',()=>scrollTo({top:0,behavior:'smooth'}));
 
-// Start the application
 loadProducts();
 renderCart();
 </script>
 </body>
-</html>
+</html>,title:Mahavir Store Lumding – Final_v3_fixed.html}```
